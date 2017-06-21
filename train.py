@@ -8,6 +8,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torchvision.models as models
 from decoder import DecoderRNN
+from torch.autograd import Variable
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dropout_p', default=.05)
@@ -16,7 +17,7 @@ parser.add_argument('--grad_clip', default=.5)
 parser.add_argument('--learning_rate', default=.0001)
 parser.add_argument('--n_layers', default=2)
 parser.add_argument('--plot_every', default=200)
-parser.add_argument('--print_every', default=1000)
+parser.add_argument('--print_every', default=100)
 parser.add_argument('--teacher_forcing_ratio', default=.5)
 args = parser.parse_args()
 
@@ -25,18 +26,47 @@ def train(input_var, target_var, encoder, decoder, decoder_opt, criterion):
     # Initialize optimizer and loss
     decoder_opt.zero_grad()
     loss = 0.
+    s = input_var.size()
 
-    #
+    # Get target sequence length
     target_length = target_var.size()[0]
+
+    # Prepare input and output variables
+    decoder_input = Variable(torch.LongTensor([0]))
+    decoder_input = decoder_input.cuda()
+    decoder_context = Variable(torch.zeros(1, decoder.hidden_size))
+    decoder_context = decoder_context.cuda()
+    decoder_hidden = decoder.init_hidden()
 
     # Scheduled sampling
     use_teacher_forcing = random.random() < args.teacher_forcing_ratio
     if use_teacher_forcing:
         # Feed target as the next input
-        pass
+        for di in range(target_length):
+            decoder_output, decoder_context, decoder_hidden, decoder_attention = decoder(decoder_input,
+                                                                                         decoder_context,
+                                                                                         decoder_hidden,
+                                                                                         input_var)
+            loss += criterion(decoder_output[0], target_var[di])
+            decoder_input = target_var[di]
 
     else:
-        pass
+        # Use previous prediction as next input
+        for di in range(target_length):
+            decoder_output, decoder_context, decoder_hidden, decoder_attention = decoder(decoder_input,
+                                                                                         decoder_context,
+                                                                                         decoder_hidden,
+                                                                                         input_var)
+            loss += criterion(decoder_output[0], target_var[di])
+
+            topv, topi = decoder_output.data.topk(1)
+            ni = topi[0][0]
+
+            decoder_input = Variable(torch.LongTensor([[ni]]))
+            decoder_input = decoder_input.cuda()
+
+            if ni == 1:
+                break
 
     # Backpropagation
     loss.backward()
@@ -48,7 +78,7 @@ def train(input_var, target_var, encoder, decoder, decoder_opt, criterion):
 # Initialize models
 lang = etl.prepare_data()
 encoder = models.vgg16(pretrained=True)
-decoder = DecoderRNN('general', 500, lang.n_words, args.n_layers, dropout_p=args.dropout_p)
+decoder = DecoderRNN('general', 128, lang.n_words, args.n_layers, dropout_p=args.dropout_p)
 
 # Make sure we do not train our encoder net
 for param in encoder.parameters():
@@ -97,8 +127,8 @@ for epoch in range(1, args.epochs + 1):
         plot_loss_total = 0
 
 # Save our models
-torch.save(decoder.state_dict(), 'data/decoder_params_{}'.format(args.language))
-torch.save(decoder.attention.state_dict(), 'data/attention_params_{}'.format(args.language))
+torch.save(decoder.state_dict(), 'data/decoder_params')
+torch.save(decoder.attention.state_dict(), 'data/attention_params')
 
 # Plot loss
 helpers.show_plot(plot_losses)

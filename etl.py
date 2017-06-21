@@ -10,8 +10,8 @@ from torch.autograd import Variable
 
 transform = transforms.Compose([
     transforms.RandomHorizontalFlip(),
-    transforms.Scale(512),
-    transforms.CenterCrop(512),
+    transforms.Scale(256),
+    transforms.CenterCrop(256),
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 
@@ -23,10 +23,17 @@ n_examples = len(cap)
 
 
 def get_example(lang, encoder, i):
+
+    # Retrieve next sample
     img, target = cap[i % n_examples]
 
-    img = Variable(img).view(1, 512, 512, 3).cuda()
-    img = encoder.features[28](img)
+    # Transform image
+    img = Variable(img).view(1, 3, 256, 256).cuda()
+    for i in range(31):
+        img = encoder.features[i](img)
+    img = img.view(256, -1)
+
+    # Transform annotation
     target = normalize_string(random.choice(target))
     target = variable_from_sentence(lang, target)
 
@@ -49,7 +56,7 @@ def normalize_string(s):
 def prepare_data():
     lang = Language('eng')
 
-    for i in range(100):
+    for i in range(n_examples):
         image, captions = cap[i]
         normed_captions = [normalize_string(caption) for caption in captions]
 

@@ -30,7 +30,7 @@ class Attention(nn.Module):
 
         # Calculate energies for each image feature map
         for i in range(n_maps):
-            attention_energies[i] = self.score(hidden, image_maps[i])
+            attention_energies[i] = self.score(hidden, image_maps[i].unsqueeze(0))
 
         # Normalize energies to weights in range 0 to 1, resize to 1 x 1 x seq_len
         return F.softmax(attention_energies).unsqueeze(0).unsqueeze(0)
