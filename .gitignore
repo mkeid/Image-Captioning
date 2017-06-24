@@ -1,5 +1,8 @@
 .idea/*
 __pycache__/
+data/language
+data/attention_params
+data/decoder_params
 data/annotations
 data/train2014
 *_params

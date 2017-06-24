@@ -1,3 +1,6 @@
+import helpers
+import os
+import PIL.Image as Image
 import random
 import re
 import torch
@@ -10,8 +13,8 @@ from torch.autograd import Variable
 
 transform = transforms.Compose([
     transforms.RandomHorizontalFlip(),
-    transforms.Scale(256),
-    transforms.CenterCrop(256),
+    transforms.Scale(224),
+    transforms.CenterCrop(224),
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 
@@ -25,19 +28,31 @@ n_examples = len(cap)
 def get_example(lang, encoder, i):
 
     # Retrieve next sample
-    img, target = cap[i % n_examples]
+    img, caption = cap[i % n_examples]
 
     # Transform image
-    img = Variable(img).view(1, 3, 256, 256).cuda()
-    for i in range(31):
+    img = Variable(img).view(1, 3, 224, 224).cuda()
+    for i in range(30):
         img = encoder.features[i](img)
     img = img.view(256, -1)
 
     # Transform annotation
-    target = normalize_string(random.choice(target))
-    target = variable_from_sentence(lang, target)
+    caption = normalize_string(random.choice(caption))
+    target = variable_from_sentence(lang, caption)
 
-    return img, target
+    return img, target, caption
+
+
+def get_image_from_path(p, enc):
+    p = os.path.expanduser(p)
+    img = Image.open(p)
+    img = transform(img)
+    img = Variable(img).cuda()
+    img = img.unsqueeze(0)
+    for i in range(30):
+        img = enc.features[i](img)
+    img = img.view(256, -1)
+    return img
 
 
 # Returns a list of indexes, one for each word in the sentence
@@ -54,14 +69,20 @@ def normalize_string(s):
 
 
 def prepare_data():
-    lang = Language('eng')
+    if os.path.exists('data/language'):
+        lang = helpers.load_object('language')
 
-    for i in range(n_examples):
-        image, captions = cap[i]
-        normed_captions = [normalize_string(caption) for caption in captions]
+    else:
+        lang = Language('eng')
 
-        for c in normed_captions:
-            lang.index_words(c)
+        for i in range(n_examples):
+            image, captions = cap[i]
+            normed_captions = [normalize_string(caption) for caption in captions]
+
+            for c in normed_captions:
+                lang.index_words(c)
+
+        helpers.save_object(lang, 'language')
 
     return lang
 

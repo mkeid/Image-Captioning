@@ -2,6 +2,7 @@ import math
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import os
+import pickle
 import time
 
 
@@ -19,6 +20,17 @@ def as_minutes(s):
     return '%dm %ds' % (m, s)
 
 
+def load_object(filename):
+    with open('data/{}'.format(filename), 'rb') as f:
+        return pickle.load(f)
+
+
+def save_object(obj, filename):
+    filename = 'data/{}'.format(filename)
+    with open(filename, 'wb') as output:
+        pickle.dump(obj, output, pickle.HIGHEST_PROTOCOL)
+
+
 def time_since(since, percent):
     now = time.time()
     s = now - since
@@ -28,7 +40,7 @@ def time_since(since, percent):
 
 
 def validate_path(p):
-    p = os.path.abspath(p)
+    p = os.path.expanduser(p)
     if not os.path.exists(p):
         print("Path '{}' does not exist. Please provide a valid image path to annotate.".format(p))
         exit(1)

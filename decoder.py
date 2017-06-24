@@ -35,7 +35,7 @@ class DecoderRNN(nn.Module):
 
         # Calculate attention from current RNN state and encoded image feature maps
         attention_weights = self.attention(rnn_output.squeeze(0), image_maps)
-        image_maps = image_maps.view(self.hidden_size * 2, 1, self.hidden_size)
+        image_maps = image_maps.view(-1, 1, self.hidden_size)
         context = attention_weights.bmm(image_maps.transpose(0, 1))
 
         # Final output layer (next word prediction using rnn hidden state and context vector)
