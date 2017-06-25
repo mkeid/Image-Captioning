@@ -34,7 +34,7 @@ def get_example(lang, encoder, i):
     img = Variable(img).view(1, 3, 224, 224).cuda()
     for i in range(30):
         img = encoder.features[i](img)
-    img = img.view(256, -1)
+    img = img.view(224, -1)
 
     # Transform annotation
     caption = normalize_string(random.choice(caption))
@@ -51,7 +51,7 @@ def get_image_from_path(p, enc):
     img = img.unsqueeze(0)
     for i in range(30):
         img = enc.features[i](img)
-    img = img.view(256, -1)
+    img = img.view(224, -1)
     return img
 
 

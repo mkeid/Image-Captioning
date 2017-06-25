@@ -14,7 +14,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--dropout_p', default=.05)
 parser.add_argument('--epochs', default=200000)
 parser.add_argument('--grad_clip', default=10.)
-parser.add_argument('--learning_rate', default=.0001)
+parser.add_argument('--learning_rate', default=.000015625)
 parser.add_argument('--plot_every', default=200)
 parser.add_argument('--print_every', default=100)
 parser.add_argument('--retrain', action='store_true')
@@ -23,7 +23,7 @@ parser.add_argument('--teacher_forcing_ratio', default=.5)
 args = parser.parse_args()
 
 n_layers = 2
-hidden_size = 392
+hidden_size = 448
 
 
 def train(input_var, target_var, decoder, decoder_opt, criterion, caption=''):
@@ -39,7 +39,8 @@ def train(input_var, target_var, decoder, decoder_opt, criterion, caption=''):
     decoder_input = decoder_input.cuda()
     decoder_context = Variable(torch.zeros(1, decoder.hidden_size))
     decoder_context = decoder_context.cuda()
-    decoder_hidden = decoder.init_hidden()
+    decoder_h = decoder.init_hidden()
+    decoder_c = decoder.init_hidden()
 
     decoded_words = []
 
@@ -48,10 +49,11 @@ def train(input_var, target_var, decoder, decoder_opt, criterion, caption=''):
     if use_teacher_forcing:
         # Feed target as the next input
         for di in range(target_length):
-            decoder_output, decoder_context, decoder_hidden, decoder_attention = decoder(decoder_input,
-                                                                                         decoder_context,
-                                                                                         decoder_hidden,
-                                                                                         input_var)
+            decoder_output, decoder_context, decoder_h, decoder_c, decoder_attention = decoder(decoder_input,
+                                                                                    decoder_context,
+                                                                                    decoder_h,
+                                                                                    decoder_c,
+                                                                                    input_var)
             loss += criterion(decoder_output[0], target_var[di])
             decoder_input = target_var[di]
 
@@ -67,9 +69,10 @@ def train(input_var, target_var, decoder, decoder_opt, criterion, caption=''):
     else:
         # Use previous prediction as next input
         for di in range(target_length):
-            decoder_output, decoder_context, decoder_hidden, decoder_attention = decoder(decoder_input,
+            decoder_output, decoder_context, decoder_h, decoder_c, decoder_attention = decoder(decoder_input,
                                                                                          decoder_context,
-                                                                                         decoder_hidden,
+                                                                                         decoder_h,
+                                                                                         decoder_c,
                                                                                          input_var)
 
             loss += criterion(decoder_output[0], target_var[di])
